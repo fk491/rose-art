@@ -1,0 +1,12 @@
+/* additions for the standalone copy (no Jimdo JS): burger menu + video embed */
+.frbg-burger{display:none;background:none;border:0;padding:6px 10px;margin:0 14px 0 0;cursor:pointer;flex-shrink:0}
+.frbg-burger span{display:block;width:20px;height:2px;background:#000;margin:4px 0}
+@media (max-width:1150px){
+  .kqI0W{display:none!important}
+  .frbg-burger{display:block}
+}
+@media (max-width:560px){
+  .S7q2B{display:none!important}
+}
+.G4Yk_.frbg-open{position:fixed;top:var(--frbg-header-h,40px);right:0;bottom:0;left:auto;max-width:min(455px,85vw)!important;width:min(455px,85vw);overflow-y:auto!important;transform:none!important;box-shadow:0 4px 16px rgba(0,0,0,.25);transition:none}
+.frbg-video-frame{width:100%;aspect-ratio:16/9;border:0;display:block}
