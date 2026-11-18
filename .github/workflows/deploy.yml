@@ -7,23 +7,59 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Install lftp
-        run: sudo apt-get update && sudo apt-get install -y lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Check settings
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+        run: |
+          ok=1
+          [ -n "$SFTP_HOST" ]     || { echo "::error::Secret SFTP_HOST fehlt oder ist leer"; ok=0; }
+          [ -n "$SFTP_USER" ]     || { echo "::error::Secret SFTP_USER fehlt oder ist leer"; ok=0; }
+          [ -n "$SFTP_PASSWORD" ] || { echo "::error::Secret SFTP_PASSWORD fehlt oder ist leer"; ok=0; }
+          [ $ok = 1 ] || exit 1
+          # Host ohne Protokoll / Pfad / Leerzeichen
+          case "$SFTP_HOST" in
+            *://*|*/*|*" "*) echo "::error::SFTP_HOST nur als Servername eintragen (ohne sftp:// und ohne Pfad)"; exit 1;;
+          esac
+          echo "Server: $SFTP_HOST (Port 22)"
+
+      - name: Test connection
+        env:
+          SFTP_HOST: ${{ secrets.SFTP_HOST }}
+          SFTP_USER: ${{ secrets.SFTP_USER }}
+          SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
+        run: |
+          export LFTP_PASSWORD="$SFTP_PASSWORD"
+          lftp -e "
+            set sftp:auto-confirm yes;
+            set net:max-retries 2;
+            set net:timeout 20;
+            open --env-password -u \"$SFTP_USER\" sftp://$SFTP_HOST;
+            pwd;
+            cls -1;
+            bye"
 
       - name: Upload via SFTP
         env:
           SFTP_HOST: ${{ secrets.SFTP_HOST }}
           SFTP_USER: ${{ secrets.SFTP_USER }}
           SFTP_PASSWORD: ${{ secrets.SFTP_PASSWORD }}
-          SFTP_DIR: ${{ vars.SFTP_DIR || '/' }}
+          SFTP_DIR: ${{ vars.SFTP_DIR || '.' }}
         run: |
-          lftp -u "$SFTP_USER","$SFTP_PASSWORD" "sftp://$SFTP_HOST" -e "
+          export LFTP_PASSWORD="$SFTP_PASSWORD"
+          lftp -e "
             set sftp:auto-confirm yes;
             set net:max-retries 3;
+            set net:timeout 20;
+            open --env-password -u \"$SFTP_USER\" sftp://$SFTP_HOST;
             mirror --reverse --verbose --only-newer \
               --exclude-glob .git* \
               --exclude-glob .github/ \
